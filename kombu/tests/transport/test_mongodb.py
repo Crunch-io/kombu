@@ -72,6 +72,51 @@ class test_mongodb(Case):
         self.assertTrue(options['fsync'])
 
     @skip_if_not_module('pymongo')
+    def test_srv(self):
+        url = 'mongodb+srv://mongo.example.com/dbname?ssl=false'
+
+        import pymongo.uri_parser
+        c = self._get_connection(url)
+
+
+        default_parser = pymongo.uri_parser.parse_uri
+
+        def parse_uri(hostname, port):
+            """Fake a parse_uri as if the proper SRV TXT and A records all
+            exist
+
+            Assumes a SRV record that points to mongo1 and mongo2.example.com
+            at port 27017, a TXT record that sets the replicaSet to
+            kombu-replica, and A records for both mongo1 and mongo2.
+            """
+            #The parse_uri method calls out to DNS, so mock it.
+
+            return {
+                'username': None,
+                'nodelist': [
+                    ('mongo1.example.com', 27017),
+                    ('mongo2.example.com', 27017)
+                ],
+                'database': 'dbname',
+                'collection': None,
+                'password': None,
+                'options': {
+                    'ssl': False,
+                    'replicaset': u'kombu-replica'
+                }
+            }
+
+        pymongo.uri_parser.parse_uri = parse_uri
+        try:
+            hostname, dbname, options = c.channels[0]._parse_uri()
+            self.assertEqual(hostname, url)
+            self.assertEqual(dbname, 'dbname')
+            self.assertEqual(options.get('ssl', None), False)
+        finally:
+            pymongo.uri_parser.parse_uri = default_parser
+
+
+    @skip_if_not_module('pymongo')
     def test_real_connections(self):
         from pymongo.errors import ConfigurationError
 

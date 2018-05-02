@@ -143,13 +143,19 @@ class Channel(virtual.Channel):
         client = self.connection.client
         hostname = client.hostname
 
-        if not hostname.startswith(scheme):
-            hostname = scheme + hostname
+        #Why are such badly configured clients allowed?
+        urischeme, rest = hostname.split('://', 1)
+        # No scheme case
+        # NOTE: This works with mongodb+???? schemes too (like mongodb+srv)
+        scheme = scheme.split('://')[0]
+        if not urischeme.startswith(scheme):
+            hostname = scheme + '://' + hostname
 
-        if not hostname[len(scheme):]:
+        # No hostname supplied
+        if rest == '':
             hostname += DEFAULT_HOST
 
-        if client.userid and '@' not in hostname:
+        elif client.userid and '@' not in hostname:
             head, tail = hostname.split('://')
 
             credentials = client.userid
@@ -168,25 +174,20 @@ class Channel(virtual.Channel):
             dbname = 'kombu_default'
 
         options = {
-            'auto_start_request': True,
             'ssl': client.ssl,
             'connectTimeoutMS': (int(client.connect_timeout * 1000)
                                  if client.connect_timeout else None),
         }
         options.update(client.transport_options)
         options.update(parsed['options'])
+        if pymongo.version_tuple < (3,):
+            options['auto_start_request'] = True
 
         return hostname, dbname, options
 
-    def _prepare_client_options(self, options):
-        if pymongo.version_tuple >= (3, ):
-            options.pop('auto_start_request', None)
-        return options
-
     def _open(self, scheme='mongodb://'):
-        hostname, dbname, options = self._parse_uri(scheme=scheme)
+        hostname, dbname, conf = self._parse_uri(scheme=scheme)
 
-        conf = self._prepare_client_options(options)
         conf['host'] = hostname
 
         env = _detect_environment()
@@ -206,7 +207,7 @@ class Channel(virtual.Channel):
                 'Kombu requires MongoDB version 1.3+ (server is {0})'.format(
                     version))
 
-        self._create_broadcast(database, options)
+        self._create_broadcast(database, conf)
 
         self._client = database
 
