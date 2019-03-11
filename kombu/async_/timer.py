@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-kombu.async.timer
-=================
+kombu.async_.timer
+==================
 
 Timer scheduling Python callbacks.
 

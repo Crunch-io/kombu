@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from kombu.async.semaphore import LaxBoundedSemaphore
+from kombu.async_.semaphore import LaxBoundedSemaphore
 
 from kombu.tests.case import Case
 

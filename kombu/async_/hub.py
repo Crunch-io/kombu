@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-kombu.async.hub
-===============
+kombu.async_.hub
+================
 
 Event loop implementation.
 
